@@ -1,50 +1,59 @@
-import sqlite3
+from db.connection import get_db_connection
 
 class Concert:
-    def __init__(self, id, band_id, venue_id, date):
-        self.id = id
-        self.band_id = band_id
-        self.venue_id = venue_id
-        self.date = date
-
-    @staticmethod
-    def band(concert_id):
-        conn = sqlite3.connect('concerts.db')
+    def __init__(self, concert_id):
+        self.id = concert_id
+    
+    def band(self):
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT bands.* FROM concerts JOIN bands ON concerts.band_id = bands.id WHERE concerts.id = ?", (concert_id,))
-        return cursor.fetchone()
+        cursor.execute('''
+        SELECT bands.id, bands.name, bands.hometown
+        FROM concerts
+        JOIN bands ON concerts.band_id = bands.id
+        WHERE concerts.id = ?
+        ''', (self.id,))
+        band = cursor.fetchone()
+        conn.close()
+        return band
 
-    @staticmethod
-    def venue(concert_id):
-        conn = sqlite3.connect('concerts.db')
+    def venue(self):
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT venues.* FROM concerts JOIN venues ON concerts.venue_id = venues.id WHERE concerts.id = ?", (concert_id,))
-        return cursor.fetchone()
+        cursor.execute('''
+        SELECT venues.id, venues.title, venues.city
+        FROM concerts
+        JOIN venues ON concerts.venue_id = venues.id
+        WHERE concerts.id = ?
+        ''', (self.id,))
+        venue = cursor.fetchone()
+        conn.close()
+        return venue
 
-    @staticmethod
-    def hometown_show(concert_id):
-        conn = sqlite3.connect('concerts.db')
+    def hometown_show(self):
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT bands.hometown, venues.city
-            FROM concerts
-            JOIN bands ON concerts.band_id = bands.id
-            JOIN venues ON concerts.venue_id = venues.id
-            WHERE concerts.id = ?
-        """, (concert_id,))
-        result = cursor.fetchone()
-        return result[0] == result[1]
+        cursor.execute('''
+        SELECT concerts.id
+        FROM concerts
+        JOIN bands ON concerts.band_id = bands.id
+        JOIN venues ON concerts.venue_id = venues.id
+        WHERE concerts.id = ? AND bands.hometown = venues.city
+        ''', (self.id,))
+        hometown_show = cursor.fetchone() is not None
+        conn.close()
+        return hometown_show
 
-    @staticmethod
-    def introduction(concert_id):
-        conn = sqlite3.connect('concerts.db')
+    def introduction(self):
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT bands.name, bands.hometown, venues.city
-            FROM concerts
-            JOIN bands ON concerts.band_id = bands.id
-            JOIN venues ON concerts.venue_id = venues.id
-            WHERE concerts.id = ?
-        """, (concert_id,))
+        cursor.execute('''
+        SELECT bands.name, bands.hometown, venues.city
+        FROM concerts
+        JOIN bands ON concerts.band_id = bands.id
+        JOIN venues ON concerts.venue_id = venues.id
+        WHERE concerts.id = ?
+        ''', (self.id,))
         band_name, band_hometown, venue_city = cursor.fetchone()
+        conn.close()
         return f"Hello {venue_city}!!!!! We are {band_name} and we're from {band_hometown}"
